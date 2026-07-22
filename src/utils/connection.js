@@ -51,13 +51,21 @@ export function buildIntentFromCountryTile(country) {
   };
 }
 
+export function getContextMenuCityName(item) {
+  if (item.type !== 'city') {
+    return null;
+  }
+
+  return item.city ?? 'City name';
+}
+
 export function buildIntentFromMenuItem(country, item) {
   if (item.type === 'city') {
     return {
       type: 'city',
       countrySlug: country.slug,
       countryName: country.name,
-      city: item.city ?? 'City name',
+      city: getContextMenuCityName(item),
     };
   }
 
@@ -94,5 +102,65 @@ export function withIntentKey(intent) {
   return {
     ...intent,
     intentKey: getIntentKey(intent),
+  };
+}
+
+export function isConnectionActiveForCountry(
+  connectionState,
+  connectionTarget,
+  country,
+) {
+  if (
+    connectionState !== 'connecting' &&
+    connectionState !== 'protected'
+  ) {
+    return false;
+  }
+
+  const intent = connectionTarget?.intent;
+
+  if (!intent || intent.type === 'fastest' || !country) {
+    return false;
+  }
+
+  return intent.countrySlug === country.slug;
+}
+
+export function isContextMenuItemActive(
+  item,
+  country,
+  connectionTarget,
+  connectionState,
+) {
+  if (!isConnectionActiveForCountry(connectionState, connectionTarget, country)) {
+    return false;
+  }
+
+  const intent = connectionTarget.intent;
+  const menuSelection = connectionTarget.menuSelection ?? null;
+
+  if (item.type === 'city') {
+    return intent.type === 'city' && intent.city === getContextMenuCityName(item);
+  }
+
+  if (item.type === 'random') {
+    return menuSelection?.type === 'random' && intent.type === 'country';
+  }
+
+  if (item.type === 'fastest') {
+    if (intent.type === 'city' || menuSelection?.type === 'random') {
+      return false;
+    }
+
+    return intent.type === 'country';
+  }
+
+  return false;
+}
+
+export function buildMenuSelectionFromItem(item) {
+  return {
+    type: item.type,
+    city: item.city ?? null,
   };
 }

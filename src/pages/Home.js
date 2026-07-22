@@ -26,12 +26,19 @@ import {
   buildIntentFromCountryTile,
   buildIntentFromMenuItem,
   buildIntentFromRecentItem,
+  buildMenuSelectionFromItem,
+  isContextMenuItemActive,
   resolveConnectionLabelFromIntent,
   resolveMenuConnectionLabel,
   resolveTileConnectionLabel,
   withIntentKey,
 } from '../utils/connection';
-import { getRecentsMenuItems, CLEAR_RECENTS_EVENT, useRecents } from '../utils/recents';
+import {
+  getRecentsMenuItems,
+  CLEAR_RECENTS_EVENT,
+  shouldRecordRecentOnDisconnect,
+  useRecents,
+} from '../utils/recents';
 import {
   buildHomeGridLayout,
   buildTileRefGrid,
@@ -535,7 +542,18 @@ export default function Home({
         return;
       }
 
-      const items = getContextMenuItems(country.name);
+      const baseItems = getContextMenuItems(country.name);
+      const currentTarget = connectionTargetRef.current;
+      const currentState = connectionStateRef.current;
+      const items = baseItems.map((item) => ({
+        ...item,
+        isActive: isContextMenuItemActive(
+          item,
+          country,
+          currentTarget,
+          currentState,
+        ),
+      }));
 
       contextMenuItemRefs.current = Array(items.length).fill(null);
 
@@ -643,13 +661,13 @@ export default function Home({
   }, []);
 
   const startConnection = useCallback(
-    (displayLabel, sourceTile, intent) => {
+    (displayLabel, sourceTile, intent, menuSelection = null) => {
       clearConnectionTimeout();
 
       const currentState = connectionStateRef.current;
       const currentTarget = connectionTargetRef.current;
 
-      if (currentState === 'protected' && currentTarget?.intent) {
+      if (shouldRecordRecentOnDisconnect(currentState === 'protected', currentTarget)) {
         recordDisconnect(currentTarget.intent);
       }
 
@@ -664,6 +682,7 @@ export default function Home({
         displayLabel,
         intent,
         sourceTile,
+        menuSelection,
         scrambleFrom,
       };
       connectionStateRef.current = 'connecting';
@@ -681,7 +700,7 @@ export default function Home({
 
   const resetConnection = useCallback(() => {
     const wasProtected = connectionStateRef.current === 'protected';
-    const intent = connectionTargetRef.current?.intent;
+    const currentTarget = connectionTargetRef.current;
 
     clearConnectionTimeout();
     connectionStateRef.current = 'unprotected';
@@ -689,8 +708,8 @@ export default function Home({
     setConnectionState('unprotected');
     setConnectionTarget(null);
 
-    if (wasProtected && intent) {
-      recordDisconnect(intent);
+    if (shouldRecordRecentOnDisconnect(wasProtected, currentTarget)) {
+      recordDisconnect(currentTarget.intent);
     }
   }, [clearConnectionTimeout, recordDisconnect]);
 
@@ -768,7 +787,12 @@ export default function Home({
       const country = rowData.countries[colIndex];
 
       if (shouldOpenUpsell(country, userType, rowData.section)) {
-        onNavigateToUpsell({ type: 'tile', row: rowIndex, col: colIndex });
+        onNavigateToUpsell({
+          type: 'tile',
+          row: rowIndex,
+          col: colIndex,
+          countryName: country.name,
+        });
         return;
       }
 
@@ -824,17 +848,31 @@ export default function Home({
       const { row, col } = contextMenu;
       const rowData = getCountryRowAt(countryRows, row);
       const country = rowData?.countries?.[col];
+
+      const currentTarget = connectionTargetRef.current;
+      const currentState = connectionStateRef.current;
+
+      if (
+        isContextMenuItemActive(item, country, currentTarget, currentState)
+      ) {
+        closeContextMenu();
+        resetConnection();
+        return;
+      }
+
       const intent = withIntentKey(buildIntentFromMenuItem(country, item));
       const displayLabel = resolveMenuConnectionLabel(country.name, item);
+      const menuSelection = buildMenuSelectionFromItem(item);
 
       closeContextMenu();
-      startConnection(displayLabel, { row, col }, intent);
+      startConnection(displayLabel, { row, col }, intent, menuSelection);
     },
     [
       closeContextMenu,
       contextMenu,
       countryRows,
       handleRecentsMenuSelect,
+      resetConnection,
       startConnection,
     ],
   );

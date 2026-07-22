@@ -17,16 +17,16 @@ const SECTION_LABELS = {
 
 const ACTIVE_BACKGROUND = 'rgba(216, 215, 223, 0.16)';
 
-function getIconSvg(section, expanded, isPageActive) {
+function getIconSvg(section, isPageActive) {
   if (section === 'Home') {
-    return expanded || isPageActive ? houseFilled : houseOutline;
+    return isPageActive ? houseFilled : houseOutline;
   }
 
   if (section === 'Search') {
     return magnifier;
   }
 
-  return expanded ? cogOutline : isPageActive ? cogFilled : cogOutline;
+  return isPageActive ? cogFilled : cogOutline;
 }
 
 function getIconColor(isFocused, isPageActive) {
@@ -41,9 +41,9 @@ function getIconColor(isFocused, isPageActive) {
   return colors.textWeak;
 }
 
-function NavIcon({ section, expanded, isPageActive, isFocused }) {
+function NavIcon({ section, isPageActive, isFocused }) {
   const iconColor = getIconColor(isFocused, isPageActive);
-  const svg = getIconSvg(section, expanded, isPageActive).replaceAll(
+  const svg = getIconSvg(section, isPageActive).replaceAll(
     'currentColor',
     iconColor,
   );
@@ -94,7 +94,6 @@ export default forwardRef(function NavItem(
     >
       <NavIcon
         section={section}
-        expanded={expanded}
         isPageActive={isPageActive}
         isFocused={isFocused}
       />

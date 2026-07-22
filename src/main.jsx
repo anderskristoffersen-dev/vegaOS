@@ -15,6 +15,8 @@ function AppShell() {
   const [hasSignedIn, setHasSignedIn] = useState(false);
   const [homeLoadingComplete, setHomeLoadingComplete] = useState(false);
   const [upsellReturnFocus, setUpsellReturnFocus] = useState(null);
+  const [upsellCountryName, setUpsellCountryName] = useState('United States');
+  const [welcomeSkipIntro, setWelcomeSkipIntro] = useState(false);
 
   const handleUserTypeChange = useCallback((nextUserType) => {
     setUserType(nextUserType);
@@ -33,12 +35,13 @@ function AppShell() {
 
   const handleNavigateToUpsell = useCallback((returnFocus) => {
     setUpsellReturnFocus(returnFocus);
+    setUpsellCountryName(returnFocus.countryName ?? 'United States');
     setActiveSection('Upsell');
   }, []);
 
   const handleLeaveUpsell = useCallback(() => {
-    setActiveSection('Home');
-  }, []);
+    setActiveSection(upsellReturnFocus?.section ?? 'Home');
+  }, [upsellReturnFocus]);
 
   const handleUpsellReturnFocusHandled = useCallback(() => {
     setUpsellReturnFocus(null);
@@ -46,6 +49,18 @@ function AppShell() {
 
   const handleHomeLoadingComplete = useCallback(() => {
     setHomeLoadingComplete(true);
+  }, []);
+
+  const handleSignOut = useCallback(() => {
+    setHasSignedIn(false);
+    setHomeLoadingComplete(false);
+    setWelcomeSkipIntro(true);
+    setActiveSection('Welcome');
+  }, []);
+
+  const handleOpenWelcome = useCallback(() => {
+    setWelcomeSkipIntro(false);
+    setActiveSection('Welcome');
   }, []);
 
   return (
@@ -62,7 +77,11 @@ function AppShell() {
         onNavigateToUpsell={handleNavigateToUpsell}
         onLeaveUpsell={handleLeaveUpsell}
         upsellReturnFocus={upsellReturnFocus}
+        upsellCountryName={upsellCountryName}
         onUpsellReturnFocusHandled={handleUpsellReturnFocusHandled}
+        welcomeSkipIntro={welcomeSkipIntro}
+        onSignOut={handleSignOut}
+        onOpenWelcome={handleOpenWelcome}
       />
       <VirtualTVRemote
         onNavigate={setActiveSection}

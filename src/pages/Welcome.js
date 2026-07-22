@@ -32,25 +32,34 @@ const backgroundTransition = {
   transitionTimingFunction: WELCOME_INTRO_EASING,
 };
 
-export default function Welcome({ onSignIn }) {
+export default function Welcome({ onSignIn, skipIntro = false }) {
   const buttonRef = useRef(null);
-  const [backgroundVisible, setBackgroundVisible] = useState(false);
-  const [revealed, setRevealed] = useState(false);
+  const [backgroundVisible, setBackgroundVisible] = useState(skipIntro);
+  const [revealed, setRevealed] = useState(skipIntro);
 
   useEffect(() => {
+    if (skipIntro) {
+      requestAnimationFrame(() => buttonRef.current?.focus?.());
+      return undefined;
+    }
+
     const frame = requestAnimationFrame(() => setBackgroundVisible(true));
 
     return () => cancelAnimationFrame(frame);
-  }, []);
+  }, [skipIntro]);
 
   useEffect(() => {
+    if (skipIntro) {
+      return undefined;
+    }
+
     const delayTimer = setTimeout(() => setRevealed(true), WELCOME_INTRO_DELAY_MS);
 
     return () => clearTimeout(delayTimer);
-  }, []);
+  }, [skipIntro]);
 
   useEffect(() => {
-    if (!revealed) {
+    if (skipIntro || !revealed) {
       return undefined;
     }
 
@@ -59,9 +68,9 @@ export default function Welcome({ onSignIn }) {
     }, WELCOME_INTRO_DURATION_MS);
 
     return () => clearTimeout(focusTimer);
-  }, [revealed]);
+  }, [revealed, skipIntro]);
 
-  useActivationKey(buttonRef, revealed);
+  useActivationKey(buttonRef, skipIntro || revealed);
 
   return (
     <View style={styles.screen}>
@@ -89,7 +98,7 @@ export default function Welcome({ onSignIn }) {
           },
         ]}
       >
-        <LogoIntro />
+        <LogoIntro skipToEnd={skipIntro} />
       </View>
 
       <View

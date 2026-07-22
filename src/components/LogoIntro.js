@@ -9,7 +9,7 @@ const LOGO_HEIGHT = 400;
 const LOGO_VISIBLE_HEIGHT = 336;
 const CROP_OFFSET = (LOGO_HEIGHT - LOGO_VISIBLE_HEIGHT) / 2;
 
-export default function LogoIntro() {
+export default function LogoIntro({ skipToEnd = false }) {
   const containerRef = useRef(null);
 
   useEffect(() => {
@@ -23,14 +23,26 @@ export default function LogoIntro() {
       container,
       renderer: 'svg',
       loop: false,
-      autoplay: true,
+      autoplay: !skipToEnd,
       animationData: logoIntroData,
     });
+
+    if (skipToEnd) {
+      const showFinalFrame = () => {
+        animation.goToAndStop(animation.totalFrames - 1, true);
+      };
+
+      if (animation.isLoaded) {
+        showFinalFrame();
+      } else {
+        animation.addEventListener('DOMLoaded', showFinalFrame);
+      }
+    }
 
     return () => {
       animation.destroy();
     };
-  }, []);
+  }, [skipToEnd]);
 
   return (
     <View style={styles.clip}>

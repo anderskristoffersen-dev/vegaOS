@@ -6,6 +6,8 @@ import AppLauncher from './pages/AppLauncher';
 import ComponentLibrary from './pages/ComponentLibrary';
 import FallbackSignIn from './pages/FallbackSignIn';
 import Home from './pages/Home';
+import Search from './pages/Search';
+import Settings from './pages/Settings';
 import SignIn from './pages/SignIn';
 import Upsell from './pages/Upsell';
 import Welcome from './pages/Welcome';
@@ -22,7 +24,11 @@ export default function App({
   onNavigateToUpsell = () => {},
   onLeaveUpsell = () => {},
   upsellReturnFocus = null,
+  upsellCountryName = 'United States',
   onUpsellReturnFocusHandled = () => {},
+  welcomeSkipIntro = false,
+  onSignOut = () => {},
+  onOpenWelcome = () => {},
 }) {
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -70,7 +76,7 @@ export default function App({
   if (activeSection === 'Apps') {
     return (
       <View style={styles.screen}>
-        <AppLauncher onOpenWelcome={() => onSectionChange('Welcome')} />
+        <AppLauncher onOpenWelcome={onOpenWelcome} />
       </View>
     );
   }
@@ -78,7 +84,10 @@ export default function App({
   if (activeSection === 'Welcome') {
     return (
       <View style={styles.screen}>
-        <Welcome onSignIn={() => onSectionChange('SignIn')} />
+        <Welcome
+          skipIntro={welcomeSkipIntro}
+          onSignIn={() => onSectionChange('SignIn')}
+        />
       </View>
     );
   }
@@ -113,7 +122,35 @@ export default function App({
   if (activeSection === 'Upsell') {
     return (
       <View style={styles.screen}>
-        <Upsell />
+        <Upsell countryName={upsellCountryName} />
+      </View>
+    );
+  }
+
+  if (activeSection === 'Settings') {
+    return (
+      <View style={styles.screen}>
+        <Settings
+          activeSection={activeSection}
+          onSectionChange={onSectionChange}
+          onSignOut={onSignOut}
+          userType={userType}
+        />
+      </View>
+    );
+  }
+
+  if (activeSection === 'Search') {
+    return (
+      <View style={styles.screen}>
+        <Search
+          activeSection={activeSection}
+          onSectionChange={onSectionChange}
+          onNavigateToUpsell={onNavigateToUpsell}
+          upsellReturnFocus={upsellReturnFocus}
+          onUpsellReturnFocusHandled={onUpsellReturnFocusHandled}
+          userType={userType}
+        />
       </View>
     );
   }

@@ -10,6 +10,7 @@ import {
   CONTEXT_MENU_ITEM_STEP_DELAY,
 } from '../Styles/motion';
 
+import activeDotIconRaw from '../assets/country-tile/active-dot.svg?raw';
 import boltIcon from '../assets/context-menu/ic-bolt-filled.svg?raw';
 import swapIcon from '../assets/context-menu/ic-arrows-swap-right.svg?raw';
 import mapPinIcon from '../assets/context-menu/ic-map-pin.svg?raw';
@@ -31,7 +32,10 @@ export const CONTEXT_MENU_ITEM_GAP = 8;
 
 function MenuIcon({ icon, focused }) {
   const color = focused ? colors.textInvert : colors.textNorm;
-  const svg = ICONS[icon].replaceAll('currentColor', color);
+  const svg = ICONS[icon].replaceAll('currentColor', color).replaceAll(
+    '#191927',
+    color,
+  );
 
   return (
     <Image
@@ -45,11 +49,28 @@ function MenuIcon({ icon, focused }) {
   );
 }
 
+function ActiveDot({ focused }) {
+  const color = focused ? colors.protonAccentBackground : colors.protonAccent;
+  const svg = activeDotIconRaw.replaceAll('#39E3B9', color);
+
+  return (
+    <Image
+      source={{
+        uri: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`,
+      }}
+      style={styles.activeDot}
+      resizeMode="contain"
+      accessibilityRole="image"
+    />
+  );
+}
+
 export default forwardRef(function ContextMenuItem(
   {
     label = 'Menu item',
     icon = 'city',
     focused = false,
+    showActiveDot = false,
     index = 0,
     animateIn = false,
     closing = false,
@@ -94,12 +115,15 @@ export default forwardRef(function ContextMenuItem(
         ]}
       >
         <MenuIcon icon={icon} focused={focused} />
-        <Text
-          style={[styles.label, { color: focused ? colors.textInvert : colors.textNorm }]}
-          numberOfLines={1}
-        >
-          {label}
-        </Text>
+        <View style={styles.labelRow}>
+          <Text
+            style={[styles.label, { color: focused ? colors.textInvert : colors.textNorm }]}
+            numberOfLines={1}
+          >
+            {label}
+          </Text>
+          {showActiveDot && <ActiveDot focused={focused} />}
+        </View>
       </View>
     </Pressable>
   );
@@ -132,10 +156,22 @@ const styles = StyleSheet.create({
     height: 32,
     flexShrink: 0,
   },
-  label: {
+  labelRow: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minWidth: 0,
+  },
+  label: {
+    flexShrink: 1,
     fontSize: 29,
     fontWeight: '400',
     lineHeight: 36,
+  },
+  activeDot: {
+    width: 30,
+    height: 30,
+    flexShrink: 0,
   },
 });

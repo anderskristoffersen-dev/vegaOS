@@ -202,6 +202,7 @@ export default function ContextMenu({
               icon={item.icon}
               index={index}
               focused={showItemFocus && focusedIndex === index}
+              showActiveDot={item.isActive ?? false}
               animateIn={entered}
               closing={closing}
               hasTVPreferredFocus={false}

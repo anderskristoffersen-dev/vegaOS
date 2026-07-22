@@ -30,6 +30,15 @@ function getPinnedCount(items) {
   return items.filter((item) => item.pinned).length;
 }
 
+export function shouldRecordRecentOnDisconnect(wasProtected, connectionTarget) {
+  if (!wasProtected || !connectionTarget?.intent) {
+    return false;
+  }
+
+  // Status quick connect has no source tile — user doesn't need that country again.
+  return connectionTarget.sourceTile != null;
+}
+
 export function addRecentOnDisconnect(items, intent) {
   const pinnedCount = getPinnedCount(items);
 
