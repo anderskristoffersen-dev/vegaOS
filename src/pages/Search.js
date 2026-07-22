@@ -115,7 +115,6 @@ export default function Search({
   const [connectionTarget, setConnectionTarget] = useState(null);
   const [resultsScrollOffset, setResultsScrollOffset] = useState(0);
 
-  const tileFocusRef = useRef(null);
   const focusedKeyIndexRef = useRef(0);
   const focusZoneRef = useRef('keyboard');
   const focusedTileRef = useRef(null);
@@ -167,11 +166,6 @@ export default function Search({
   useEffect(() => {
     focusedKeyIndexRef.current = focusedKeyIndex;
   }, [focusedKeyIndex]);
-
-  useEffect(() => {
-    tileFocusRef.current =
-      focusZone === 'results' ? focusedTileRef.current : null;
-  }, [focusZone, focusedTile]);
 
   const focusKeyboard = useCallback((index = 0) => {
     const nextIndex = Math.max(0, Math.min(SEARCH_KEY_COUNT - 1, index));
@@ -795,6 +789,7 @@ export default function Search({
       }
 
       if (event.key === 'ArrowLeft') {
+        tileRefs.current[focusedTileState.row]?.[focusedTileState.col]?.blur?.();
         focusedTileRef.current = null;
       }
     };
@@ -918,7 +913,7 @@ export default function Search({
         onSectionChange={onSectionChange}
         onExpandedChange={setNavExpanded}
         onExitFocus={handleExitNavFocus}
-        tileFocusRef={tileFocusRef}
+        tileFocusRef={focusedTileRef}
       />
 
       <View
@@ -1077,7 +1072,7 @@ const styles = StyleSheet.create({
   },
   keyboard: {
     position: 'absolute',
-    left: (TV_WIDTH - SEARCH_KEYBOARD_WIDTH) / 2,
+    left: CONTENT_OFFSET_BASE,
     top: KEYBOARD_TOP,
   },
   resultsLayer: {
