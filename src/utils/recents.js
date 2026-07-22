@@ -1,25 +1,52 @@
-import { useCallback, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 
 export const RECENTS_STORAGE_KEY = 'vega-recents';
 export const RECENTS_MAX_ITEMS = 6;
+
+function slugifyCountryName(name) {
+  if (!name) {
+    return null;
+  }
+
+  return name.toLowerCase().replace(/\s+/g, '-');
+}
+
+export function resolveCountrySlug(intent) {
+  if (intent.countrySlug) {
+    return intent.countrySlug;
+  }
+
+  return slugifyCountryName(intent.countryName);
+}
 
 export function getIntentKey(intent) {
   if (intent.type === 'fastest') {
     return 'fastest';
   }
 
+  const slug = resolveCountrySlug(intent);
+
   if (intent.type === 'city') {
-    return `city:${intent.countrySlug}:${intent.city}`;
+    return `city:${slug}:${intent.city}`;
   }
 
-  return `country:${intent.countrySlug}`;
+  return `country:${slug}`;
 }
 
 export function createRecentItem(intent, { pinned = false } = {}) {
+  const countrySlug = resolveCountrySlug(intent);
+  const normalizedIntent = { ...intent, countrySlug };
+
   return {
-    intentKey: getIntentKey(intent),
+    intentKey: getIntentKey(normalizedIntent),
     type: intent.type,
-    countrySlug: intent.countrySlug ?? null,
+    countrySlug,
     countryName: intent.countryName,
     city: intent.city ?? null,
     pinned,
@@ -28,6 +55,63 @@ export function createRecentItem(intent, { pinned = false } = {}) {
 
 function getPinnedCount(items) {
   return items.filter((item) => item.pinned).length;
+}
+
+function isValidRecentItem(item) {
+  return (
+    item &&
+    typeof item.type === 'string' &&
+    typeof item.countryName === 'string' &&
+    typeof item.pinned === 'boolean'
+  );
+}
+
+export function normalizeRecents(items) {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+
+  const seen = new Set();
+  const pinned = [];
+  const unpinned = [];
+
+  items.forEach((item) => {
+    if (!isValidRecentItem(item)) {
+      return;
+    }
+
+    const normalized = createRecentItem(
+      {
+        type: item.type,
+        countrySlug: item.countrySlug,
+        countryName: item.countryName,
+        city: item.city,
+      },
+      { pinned: item.pinned },
+    );
+
+    if (seen.has(normalized.intentKey)) {
+      return;
+    }
+
+    seen.add(normalized.intentKey);
+
+    if (normalized.pinned) {
+      pinned.push(normalized);
+    } else {
+      unpinned.push(normalized);
+    }
+  });
+
+  const pinnedSlice = pinned.slice(0, RECENTS_MAX_ITEMS);
+
+  if (pinnedSlice.length >= RECENTS_MAX_ITEMS) {
+    return pinnedSlice;
+  }
+
+  const remainingSlots = RECENTS_MAX_ITEMS - pinnedSlice.length;
+
+  return [...pinnedSlice, ...unpinned.slice(0, remainingSlots)];
 }
 
 export function shouldRecordRecentOnDisconnect(wasProtected, connectionTarget) {
@@ -40,68 +124,70 @@ export function shouldRecordRecentOnDisconnect(wasProtected, connectionTarget) {
 }
 
 export function addRecentOnDisconnect(items, intent) {
-  const pinnedCount = getPinnedCount(items);
+  const normalized = normalizeRecents(items);
+  const pinnedCount = getPinnedCount(normalized);
 
   if (pinnedCount >= RECENTS_MAX_ITEMS) {
-    return items;
+    return normalized;
   }
 
   const intentKey = getIntentKey(intent);
-  const existingIndex = items.findIndex((item) => item.intentKey === intentKey);
-  const next = [...items];
+  const existing = normalized.find((item) => item.intentKey === intentKey);
+  const next = normalized.filter((item) => item.intentKey !== intentKey);
 
-  if (existingIndex >= 0) {
-    const [existing] = next.splice(existingIndex, 1);
+  if (existing) {
     next.splice(pinnedCount, 0, existing);
   } else {
     next.splice(pinnedCount, 0, createRecentItem(intent));
   }
 
-  if (next.length > RECENTS_MAX_ITEMS) {
-    return next.slice(0, RECENTS_MAX_ITEMS);
-  }
-
-  return next;
+  return normalizeRecents(next);
 }
 
 export function pinRecent(items, index) {
-  const item = items[index];
+  const normalized = normalizeRecents(items);
+  const item = normalized[index];
 
   if (!item || item.pinned) {
-    return items;
+    return normalized;
   }
 
-  const next = [...items];
+  const next = [...normalized];
   next.splice(index, 1);
 
   const pinnedCount = getPinnedCount(next);
   next.splice(pinnedCount, 0, { ...item, pinned: true });
 
-  return next;
+  return normalizeRecents(next);
 }
 
 export function unpinRecent(items, index) {
-  const item = items[index];
+  const normalized = normalizeRecents(items);
+  const item = normalized[index];
 
   if (!item || !item.pinned) {
-    return items;
+    return normalized;
   }
 
-  const next = [...items];
+  const next = [...normalized];
   next.splice(index, 1);
 
   const pinnedCount = getPinnedCount(next);
   next.splice(pinnedCount, 0, { ...item, pinned: false });
 
-  return next;
+  return normalizeRecents(next);
 }
 
 export function removeRecent(items, index) {
-  if (index < 0 || index >= items.length) {
-    return items;
+  const normalized = normalizeRecents(items);
+
+  if (index < 0 || index >= normalized.length) {
+    return normalized;
   }
 
-  return items.filter((_, itemIndex) => itemIndex !== index);
+  return normalizeRecents(
+    normalized.filter((_, itemIndex) => itemIndex !== index),
+  );
 }
 
 export function loadRecents() {
@@ -122,14 +208,7 @@ export function loadRecents() {
       return [];
     }
 
-    return parsed.filter(
-      (item) =>
-        item &&
-        typeof item.intentKey === 'string' &&
-        typeof item.type === 'string' &&
-        typeof item.countryName === 'string' &&
-        typeof item.pinned === 'boolean',
-    );
+    return normalizeRecents(parsed);
   } catch {
     return [];
   }
@@ -140,7 +219,8 @@ export function saveRecents(items) {
     return;
   }
 
-  window.localStorage.setItem(RECENTS_STORAGE_KEY, JSON.stringify(items));
+  const normalized = normalizeRecents(items);
+  window.localStorage.setItem(RECENTS_STORAGE_KEY, JSON.stringify(normalized));
 }
 
 export const CLEAR_RECENTS_EVENT = 'vega:clear-recents';
@@ -149,12 +229,21 @@ export function clearAllRecents() {
   saveRecents([]);
 }
 
-export function useRecents() {
-  const [recents, setRecentsState] = useState(() => loadRecents());
+const RecentsContext = createContext(null);
+
+export function RecentsProvider({ children }) {
+  const [recents, setRecentsState] = useState(() => {
+    const loaded = loadRecents();
+    saveRecents(loaded);
+    return loaded;
+  });
 
   const setRecents = useCallback((updater) => {
     setRecentsState((current) => {
-      const next = typeof updater === 'function' ? updater(current) : updater;
+      const next =
+        typeof updater === 'function'
+          ? normalizeRecents(updater(current))
+          : normalizeRecents(updater);
       saveRecents(next);
       return next;
     });
@@ -192,7 +281,19 @@ export function useRecents() {
     setRecents([]);
   }, [setRecents]);
 
-  return {
+  useEffect(() => {
+    const handleClearRecents = () => {
+      clearAll();
+    };
+
+    window.addEventListener(CLEAR_RECENTS_EVENT, handleClearRecents);
+
+    return () => {
+      window.removeEventListener(CLEAR_RECENTS_EVENT, handleClearRecents);
+    };
+  }, [clearAll]);
+
+  const value = {
     recents,
     setRecents,
     recordDisconnect,
@@ -201,6 +302,20 @@ export function useRecents() {
     removeAt,
     clearAll,
   };
+
+  return (
+    <RecentsContext.Provider value={value}>{children}</RecentsContext.Provider>
+  );
+}
+
+export function useRecents() {
+  const context = useContext(RecentsContext);
+
+  if (!context) {
+    throw new Error('useRecents must be used within a RecentsProvider');
+  }
+
+  return context;
 }
 
 export function getRecentsMenuItems(recent) {

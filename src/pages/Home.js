@@ -35,7 +35,6 @@ import {
 } from '../utils/connection';
 import {
   getRecentsMenuItems,
-  CLEAR_RECENTS_EVENT,
   shouldRecordRecentOnDisconnect,
   useRecents,
 } from '../utils/recents';
@@ -237,7 +236,7 @@ export default function Home({
   upsellReturnFocus = null,
   onUpsellReturnFocusHandled = () => {},
 }) {
-  const { recents, recordDisconnect, pinAt, unpinAt, removeAt, clearAll } = useRecents();
+  const { recents, recordDisconnect, pinAt, unpinAt, removeAt } = useRecents();
   const showRecents = userType !== USER_TYPES.FREE && recents.length > 0;
   const showBanner = userType === USER_TYPES.FREE;
 
@@ -333,18 +332,6 @@ export default function Home({
     showBanner,
   );
   scrollTargetRef.current = scrollOffset;
-
-  useEffect(() => {
-    const handleClearRecents = () => {
-      clearAll();
-    };
-
-    window.addEventListener(CLEAR_RECENTS_EVENT, handleClearRecents);
-
-    return () => {
-      window.removeEventListener(CLEAR_RECENTS_EVENT, handleClearRecents);
-    };
-  }, [clearAll]);
 
   useLayoutEffect(() => {
     if (!isContentReady) {

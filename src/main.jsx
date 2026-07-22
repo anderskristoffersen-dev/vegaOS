@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { AppRegistry } from 'react-native';
 import App from './App';
 import VirtualTVRemote from './components/VirtualTVRemote';
+import { RecentsProvider } from './utils/recents';
 import {
   loadFreeCountrySort,
   saveFreeCountrySort,
@@ -64,7 +65,7 @@ function AppShell() {
   }, []);
 
   return (
-    <>
+    <RecentsProvider>
       <App
         activeSection={activeSection}
         onSectionChange={setActiveSection}
@@ -91,7 +92,7 @@ function AppShell() {
         freeCountrySort={freeCountrySort}
         onFreeCountrySortChange={handleFreeCountrySortChange}
       />
-    </>
+    </RecentsProvider>
   );
 }
 
